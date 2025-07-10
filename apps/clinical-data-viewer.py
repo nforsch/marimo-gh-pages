@@ -1,7 +1,39 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "dotenv>=0.9.9",
+#     "ipywidgets>=8.1.7",
+#     "marimo>=0.14.10",
+#     "matplotlib>=3.10.3",
+#     "pandas>=2.3.0",
+#     "plotly>=6.2.0",
+#     "pre-commit>=4.2.0",
+#     "pyarrow>=20.0.0",
+#     "pyvista>=0.45.2",
+#     "scikit-learn>=1.7.0",
+#     "seaborn>=0.13.2",
+#     "vtk>=9.3.0",
+# ]
+# ///
 import marimo
 
 __generated_with = "0.14.10"
 app = marimo.App(width="medium")
+
+with app.setup:
+    import numpy as np
+    import pandas as pd
+    import marimo as mo
+    from dotenv import load_dotenv, find_dotenv
+    import os
+    from pathlib import Path
+    from sklearn.decomposition import PCA
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import vtk
+    import plotly.express as px
+
+    # import pyvista as pv
 
 
 @app.cell
@@ -44,7 +76,10 @@ def _(data_path, form, mo):
 
 @app.cell
 def _(data_path, form, mo):
-    mo.stop(form.value is None and data_path is None, mo.md("**Fill in your data path in the form above to continue.**"))
+    mo.stop(
+        form.value is None and data_path is None,
+        mo.md("**Fill in your data path in the form above to continue.**"),
+    )
     _message = None
     if data_path is not None:
         DATA_PATH = data_path
@@ -64,7 +99,7 @@ def _(mo):
 
 @app.cell
 def _(DATA_PATH, mo, pd):
-    df = pd.read_pickle(DATA_PATH+"/df_ntnu.pkl")
+    df = pd.read_pickle(DATA_PATH + "/df_ntnu.pkl")
     transformed_df = mo.ui.dataframe(df)
     transformed_df
     return (df,)
@@ -74,10 +109,45 @@ def _(DATA_PATH, mo, pd):
 def _(df):
     # df_next = transformed_df.value
     df_next = df.copy()
-    df_next = df_next[["curling_min_deg", "curling_difference_deg", "annular_opening_difference_mm", "annular_opening_ddt_max_mm/ms", "curling_angle_ddt_min_deg/ms", "posterior_tortuosity", "anterior_tortuosity", "basal_tortuosity", "posterior_transverse_displacement_mm", "anterior_transverse_displacement_mm", "basal_transverse_displacement_mm", "posterior_longitudinal_displacement_mm", "anterior_longitudinal_displacement_mm", "basal_longitudinal_displacement_mm", "MAD 0= no 1= yes", "Curling motion 0=no 1=yes", "Tracking 0=good 1=poor", "BSA", "Gender", "age_inclusion", "Weight", "Height", "BMI", "syst_BP", "diast_BP", "VT_or_ACA"]]
-    df_next["Curling motion 0=no 1=yes"] = df_next["Curling motion 0=no 1=yes"].astype("bool", errors="raise")
-    df_next["MAD 0= no 1= yes"] = df_next["MAD 0= no 1= yes"].astype("bool", errors="raise")
-    df_next["Tracking 0=good 1=poor"] = df_next["Tracking 0=good 1=poor"].astype("bool", errors="raise")
+    df_next = df_next[
+        [
+            "curling_min_deg",
+            "curling_difference_deg",
+            "annular_opening_difference_mm",
+            "annular_opening_ddt_max_mm/ms",
+            "curling_angle_ddt_min_deg/ms",
+            "posterior_tortuosity",
+            "anterior_tortuosity",
+            "basal_tortuosity",
+            "posterior_transverse_displacement_mm",
+            "anterior_transverse_displacement_mm",
+            "basal_transverse_displacement_mm",
+            "posterior_longitudinal_displacement_mm",
+            "anterior_longitudinal_displacement_mm",
+            "basal_longitudinal_displacement_mm",
+            "MAD 0= no 1= yes",
+            "Curling motion 0=no 1=yes",
+            "Tracking 0=good 1=poor",
+            "BSA",
+            "Gender",
+            "age_inclusion",
+            "Weight",
+            "Height",
+            "BMI",
+            "syst_BP",
+            "diast_BP",
+            "VT_or_ACA",
+        ]
+    ]
+    df_next["Curling motion 0=no 1=yes"] = df_next["Curling motion 0=no 1=yes"].astype(
+        "bool", errors="raise"
+    )
+    df_next["MAD 0= no 1= yes"] = df_next["MAD 0= no 1= yes"].astype(
+        "bool", errors="raise"
+    )
+    df_next["Tracking 0=good 1=poor"] = df_next["Tracking 0=good 1=poor"].astype(
+        "bool", errors="raise"
+    )
     df_next["VT_or_ACA"] = df_next["VT_or_ACA"].astype("bool", errors="raise")
     df_next.index = df_next.index.astype(int)
     df_next
@@ -97,8 +167,16 @@ def _(df_next, mo):
     first_row = mo.hstack([mo.md("Choose variable X:"), var_A], justify="start")
     var_B = mo.ui.dropdown(options=df_next.columns, searchable=True)
     second_row = mo.hstack([mo.md("Choose variable Y:"), var_B], justify="start")
-    category = mo.ui.dropdown(options=[col for col,ty in zip(df_next.columns, df_next.dtypes) if ty=='bool'], value=None, searchable=True)
-    third_row = mo.hstack([mo.md("(Optional) choose categorical variable:"), category], justify="start")
+    category = mo.ui.dropdown(
+        options=[
+            col for col, ty in zip(df_next.columns, df_next.dtypes) if ty == "bool"
+        ],
+        value=None,
+        searchable=True,
+    )
+    third_row = mo.hstack(
+        [mo.md("(Optional) choose categorical variable:"), category], justify="start"
+    )
     button_on = mo.ui.run_button(label="Generate plot")
     button_off = mo.ui.run_button(label="Generate plot", disabled=True)
 
@@ -117,14 +195,17 @@ def _():
 def _(category, df_next, mo, px, var_A, var_B):
 
     # mo.stop(not button_on.value, mo.md("**Select variables for plotting and click `Generate plot`**"))
-    mo.stop(all(elem is None for elem in [var_A.value, var_B.value]), mo.md("**Select variables for plotting**"))
+    mo.stop(
+        all(elem is None for elem in [var_A.value, var_B.value]),
+        mo.md("**Select variables for plotting**"),
+    )
     fig_data = px.scatter(
         df_next,
         x=var_A.value,
         y=var_B.value,
         color=category.value,
         marginal_x="violin",
-        marginal_y="violin"
+        marginal_y="violin",
     )
     mo.ui.plotly(fig_data)
     return
@@ -144,7 +225,9 @@ def _(mo):
 @app.cell
 def _(DATA_PATH, Path, df_next, mo):
     # cmr_video_path = Path(DATA_PATH + "MAD/data_processed/MAD_OUS_vids/")
-    cmr_video_dir = mo.ui.file_browser(Path(DATA_PATH), selection_mode="directory", multiple=False)
+    cmr_video_dir = mo.ui.file_browser(
+        Path(DATA_PATH), selection_mode="directory", multiple=False
+    )
     select_patient = mo.ui.dropdown(options=df_next.index)
     mo.vstack([cmr_video_dir, select_patient])
     return cmr_video_dir, select_patient
@@ -163,17 +246,23 @@ def _(cmr_video_dir, mo, select_patient):
         video_path = cmr_video_dir.path() / str(select_patient.value) / "cine/4ch"
         _video_list = list(video_path.glob("*.mp4"))
         if not _video_list:
-            cmr4ch_video = mo.md(f"Folder of patient {select_patient.value} does not contain 4ch cine video (.mp4)")
+            cmr4ch_video = mo.md(
+                f"Folder of patient {select_patient.value} does not contain 4ch cine video (.mp4)"
+            )
         else:
-            cmr4ch_video = mo.video(src=_video_list[0],
-                                             muted=True,
-                                             autoplay=True,
-                                             loop=True,
-                                             height=500,width=500
-                                            )
+            cmr4ch_video = mo.video(
+                src=_video_list[0],
+                muted=True,
+                autoplay=True,
+                loop=True,
+                height=500,
+                width=500,
+            )
         # cmr4ch_video = list(video_path.glob("*.gif"))[0]
     else:
-        cmr4ch_video = mo.md(f"Folder of patient {select_patient.value} does not contain 4ch cine video (.mp4)")
+        cmr4ch_video = mo.md(
+            f"Folder of patient {select_patient.value} does not contain 4ch cine video (.mp4)"
+        )
     cmr4ch_video
     return
 
@@ -196,7 +285,9 @@ def _(DATA_PATH, Path, np):
     for _xyz_ii in sorted(points_path.glob(pattern="*.txt")):
         XYZ_control.append(np.loadtxt(_xyz_ii, delimiter=","))
     XYZ_control = np.array(XYZ_control)
-    XYZ_control = np.reshape(XYZ_control, (XYZ_control.shape[0], XYZ_control.shape[1]*3), order="C")
+    XYZ_control = np.reshape(
+        XYZ_control, (XYZ_control.shape[0], XYZ_control.shape[1] * 3), order="C"
+    )
     print(XYZ_control[1, :4])
 
     return (XYZ_control,)
@@ -263,7 +354,7 @@ def _(mo):
 def _(XYZ_control, XYZ_demo, mo):
     choice_of_XYZ = mo.ui.dropdown(
         options={"Control data": XYZ_control, "Demo data": XYZ_demo},
-        value="Control data"
+        value="Control data",
     )
     choice_of_XYZ
     return (choice_of_XYZ,)
@@ -390,9 +481,18 @@ def _(mo, np, px, xyz_ed, xyz_es, xyz_mu):
         x=xyz_ed[:, 0],
         y=xyz_ed[:, 1],
         z=xyz_ed[:, 2],
-        range_x=[-1.5*np.abs(xyz_mu[:,0].min()) + np.mean(xyz_mu[:, 0]), 1.5*np.abs(xyz_mu[:,0].max()) + np.mean(xyz_mu[:, 0])],
-        range_y=[-1.5*np.abs(xyz_mu[:,1].min()) + np.mean(xyz_mu[:, 1]), 1.5*np.abs(xyz_mu[:,1].max()) + np.mean(xyz_mu[:, 1])],
-        range_z=[-1.5*np.abs(xyz_mu[:,2].min()) + np.mean(xyz_mu[:, 2]), 1.5*np.abs(xyz_mu[:,2].max()) + np.mean(xyz_mu[:, 2])],
+        range_x=[
+            -1.5 * np.abs(xyz_mu[:, 0].min()) + np.mean(xyz_mu[:, 0]),
+            1.5 * np.abs(xyz_mu[:, 0].max()) + np.mean(xyz_mu[:, 0]),
+        ],
+        range_y=[
+            -1.5 * np.abs(xyz_mu[:, 1].min()) + np.mean(xyz_mu[:, 1]),
+            1.5 * np.abs(xyz_mu[:, 1].max()) + np.mean(xyz_mu[:, 1]),
+        ],
+        range_z=[
+            -1.5 * np.abs(xyz_mu[:, 2].min()) + np.mean(xyz_mu[:, 2]),
+            1.5 * np.abs(xyz_mu[:, 2].max()) + np.mean(xyz_mu[:, 2]),
+        ],
         template="simple_white",
     )
     fig_ed.update_layout(
@@ -401,13 +501,13 @@ def _(mo, np, px, xyz_ed, xyz_es, xyz_mu):
             yaxis_title="Y",
             zaxis_title="Z",
             aspectmode="manual",
-            aspectratio=dict(x=1, y=1, z=1)
+            aspectratio=dict(x=1, y=1, z=1),
         ),
         autosize=False,
         dragmode="turntable",
         width=900,
         height=900,
-        scene_camera_projection_type='orthographic'
+        scene_camera_projection_type="orthographic",
     )
 
     fig_es = px.scatter_3d(
@@ -431,7 +531,7 @@ def _(mo, np, px, xyz_ed, xyz_es, xyz_mu):
         dragmode="turntable",
         width=900,
         height=900,
-        scene_camera_projection_type='orthographic',
+        scene_camera_projection_type="orthographic",
     )
     plot_ed = mo.ui.plotly(fig_ed)
     plot_es = mo.ui.plotly(fig_es)
@@ -450,11 +550,10 @@ def _(
 ):
     tab1 = mo.vstack(
         [
+            mo.hstack([mode_ed_dropdown]),
             mo.hstack(
-                [mode_ed_dropdown]
-            ),
-            mo.hstack(
-                [score_ed_slider, mo.md(f"Selected score: {score_ed_slider.value}")], justify="start"
+                [score_ed_slider, mo.md(f"Selected score: {score_ed_slider.value}")],
+                justify="start",
             ),
             mo.hstack([plot_ed, plot_ed.value]),
         ],
@@ -463,11 +562,10 @@ def _(
 
     tab2 = mo.vstack(
         [
+            mo.hstack([mode_es_dropdown]),
             mo.hstack(
-                [mode_es_dropdown]
-            ),
-            mo.hstack(
-                [score_es_slider, mo.md(f"Selected score: {score_es_slider.value}")], justify="start"
+                [score_es_slider, mo.md(f"Selected score: {score_es_slider.value}")],
+                justify="start",
             ),
             mo.hstack([plot_es, plot_es.value]),
         ],
@@ -497,15 +595,15 @@ def _(mo):
 def _(XYZ, button_surface, mo, pv):
     mo.stop(not button_surface.value, "Click the button to continue")
     # button_surface.value = None
-    cloud = pv.PolyData(XYZ[0].reshape((-1,3))[:801][::3])
+    cloud = pv.PolyData(XYZ[0].reshape((-1, 3))[:801][::3])
 
     # Perform 3D Delaunay triangulation and extract the surface
     mesh = cloud.delaunay_3d().extract_surface()
 
     # Plot the resulting mesh
     plotter = pv.Plotter()
-    plotter.add_mesh(mesh, show_edges=True, color='lightblue')
-    plotter.add_points(cloud, color='red', point_size=5)
+    plotter.add_mesh(mesh, show_edges=True, color="lightblue")
+    plotter.add_points(cloud, color="red", point_size=5)
 
     # surf_plot = plotter.export_html(None)
     mo.md(f"{mo.as_html(plotter.export_html("test.html"))}")
@@ -522,7 +620,9 @@ def _():
 def _(PCA, n_points, np):
     def get_pca_scores(xyz: np.ndarray, pca: PCA, n_components: int = 10):
         if xyz.ndim < 2:
-            scores = pca.transform(xyz.reshape(1, -1)) / np.sqrt(pca.explained_variance_)
+            scores = pca.transform(xyz.reshape(1, -1)) / np.sqrt(
+                pca.explained_variance_
+            )
             return scores[0, :n_components]
         else:
             scores = pca.transform(xyz) / np.sqrt(pca.explained_variance_)
@@ -533,39 +633,45 @@ def _(PCA, n_points, np):
             xyz = pca.inverse_transform(scores).reshape((n_points, 3), order="F")
             return xyz
         else:
-            xyz = np.array([_xyz.reshape((n_points, 3), order="F") for _xyz in pca.inverse_transform(scores)])
+            xyz = np.array(
+                [
+                    _xyz.reshape((n_points, 3), order="F")
+                    for _xyz in pca.inverse_transform(scores)
+                ]
+            )
             return xyz
+
     return
 
 
-@app.cell
-def _():
-    import marimo as mo
-    import os
-    from pathlib import Path
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from dotenv import load_dotenv, find_dotenv
-    from sklearn.decomposition import PCA
-    import seaborn as sns
-    import pandas as pd
-    import plotly.express as px
-    import pyvista as pv
+# @app.cell
+# def _():
+#     import marimo as mo
+#     import os
+#     from pathlib import Path
+#     import matplotlib.pyplot as plt
+#     import numpy as np
+#     from dotenv import load_dotenv, find_dotenv
+#     from sklearn.decomposition import PCA
+#     import seaborn as sns
+#     import pandas as pd
+#     import plotly.express as px
+#     import pyvista as pv
 
-    return (
-        PCA,
-        Path,
-        find_dotenv,
-        load_dotenv,
-        mo,
-        np,
-        os,
-        pd,
-        plt,
-        pv,
-        px,
-        sns,
-    )
+#     return (
+#         PCA,
+#         Path,
+#         find_dotenv,
+#         load_dotenv,
+#         mo,
+#         np,
+#         os,
+#         pd,
+#         plt,
+#         pv,
+#         px,
+#         sns,
+#     )
 
 
 if __name__ == "__main__":
