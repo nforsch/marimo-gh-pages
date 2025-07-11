@@ -9,10 +9,8 @@
 #     "plotly>=6.2.0",
 #     "pre-commit>=4.2.0",
 #     "pyarrow>=20.0.0",
-#     "pyvista>=0.45.2",
 #     "scikit-learn>=1.7.0",
 #     "seaborn>=0.13.2",
-#     "vtk>=9.3.0",
 # ]
 # ///
 import marimo
@@ -30,7 +28,6 @@ with app.setup:
     from sklearn.decomposition import PCA
     import matplotlib.pyplot as plt
     import seaborn as sns
-    import vtk
     import plotly.express as px
 
     # import pyvista as pv
@@ -99,7 +96,7 @@ def _(mo):
 
 @app.cell
 def _(DATA_PATH, mo, pd):
-    df = pd.read_pickle(DATA_PATH + "/df_ntnu.pkl")
+    df = pd.read_pickle(mo.notebook_location() / DATA_PATH / "df_ntnu.pkl")
     transformed_df = mo.ui.dataframe(df)
     transformed_df
     return (df,)
